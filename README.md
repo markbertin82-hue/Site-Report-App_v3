@@ -1,9 +1,14 @@
-# Site Job Reporter V3.1
-Updates: PNE Controls Ltd logo in header, redundant top New Job button removed, photo gallery mobile overflow fix, 3 job action buttons aligned, search improvements. Existing V3 features retained.
+# Site Job Reporter V4 - AI-assisted report drafting
 
-## Update GitHub Pages
-Upload ALL files from this folder to the ROOT of the same GitHub repository and overwrite the previous files. Include `company-logo.jpeg`, updated `index.html`, and `sw.js`. Do not create a nested directory.
-Wait for GitHub Pages deployment, then close and reopen the installed app while online. If the old screen remains, reload the page from the browser URL. Do not clear website data: that may delete saved jobs.
+New: technical and customer report types, export prompt to ChatGPT by clipboard, paste/edit/save separate drafts, print-ready PNE branded report preview, cropped logo.
 
-## Data safety
-Export a JSON backup before upgrading. This release uses the same IndexedDB name as V3 and does not intentionally delete existing data. Data stays on each device; there is no OneDrive sync.
+## How to use
+Open a job > Report > choose report type > Prepare AI prompt > Copy prompt. Paste into ChatGPT. Review the generated text, copy it back into the app's report editor, and Save report draft. Print / Save as PDF from the report tab. Switch report type to save a separate draft.
+
+Voice recordings and photo image contents are not automatically sent to ChatGPT; the prompt includes metadata only. The user must transcribe or attach them separately if appropriate.
+
+## Update
+Back up jobs first. Replace existing GitHub Pages root files with this package's files, including company-logo.png and sw.js. Remove old company-logo.jpeg if desired. Keep the same repository and URL. Wait for deployment, reopen app online, and allow cache refresh. Never clear site data to force an update.
+
+## Privacy
+The app does not call an AI API. Copying a prompt to ChatGPT sends information to a third party when pasted. Do not use real confidential work data without employer approval. Each device retains separate IndexedDB data. There is no OneDrive sync or automatic cloud backup.

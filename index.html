@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#17324d"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png">
-<title>Site Job Reporter V3.1</title>
+<title>Site Job Reporter V4</title>
 <style>
 :root{--navy:#17324d;--blue:#286aa6;--bg:#f3f5f7;--card:#fff;--muted:#66717c;--border:#d9dee3;--ok:#237a4b}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:#17202a}
@@ -32,7 +32,7 @@ button:disabled{opacity:.5;cursor:not-allowed}.checkrow{display:flex;gap:8px;ali
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 main,.card,.screen{min-width:0;max-width:100%}
 .brand-header{display:flex;align-items:center;justify-content:flex-start;gap:12px;min-height:76px}
-.company-logo{display:block;width:92px;height:60px;object-fit:contain;background:white;border-radius:7px;padding:3px;flex-shrink:0}
+.company-logo{display:block;width:110px;height:60px;object-fit:contain;background:white;border-radius:7px;padding:3px;flex-shrink:0}
 .brand-title{font-weight:750;font-size:17px;line-height:1.25}
 .brand-title span{font-size:12px;color:#bcd0df;white-space:nowrap}
 .photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-width:0;width:100%}
@@ -43,10 +43,24 @@ main,.card,.screen{min-width:0;max-width:100%}
 #jobHeader .actions button{min-width:0;padding:10px 5px;font-size:clamp(10px,2.7vw,14px);white-space:normal}
 @media(max-width:380px){.photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:700px){.photo-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media print{
+ body{background:white;color:#111}
+ .brand-header{display:none!important}
+ #printReport{border:0;box-shadow:none;padding:0}
+ #printReport h3{font-size:20px;border-bottom:2px solid #17324d;padding-bottom:10px}
+ #printReport h4{color:#17324d;border-bottom:1px solid #ddd;padding-bottom:5px;margin-top:20px}
+ #printReport p{white-space:pre-wrap;overflow-wrap:anywhere}
+ .reportphoto{max-width:260px;max-height:210px}
+}
+.report-draft{white-space:pre-wrap;line-height:1.55;overflow-wrap:anywhere}
+.report-company{display:flex;align-items:center;gap:15px;border-bottom:2px solid #17324d;padding-bottom:12px}
+.report-company img{width:150px;height:75px;object-fit:contain}
+#aiPrompt{min-height:220px;font-size:12px}
+#draftText{min-height:220px;line-height:1.5}
 </style>
 </head>
 <body>
-<header class="brand-header"><img class="company-logo" src="./company-logo.jpeg" alt="PNE Controls Ltd"><div class="brand-title">Site Job Reporter <span>V3.1</span></div></header>
+<header class="brand-header"><img class="company-logo" src="./company-logo.png" alt="PNE Controls Ltd"><div class="brand-title">Site Job Reporter <span>V4</span></div></header>
 <main>
 <section id="home" class="screen active">
 <div class="title">Jobs</div>
@@ -169,8 +183,62 @@ function removeCheck(id){if(!canEdit()||!confirm('Remove this checklist item?'))
 function endDay(){if(current.closed)return;let d=activeDay();if(d){d.ended=now();addEvent('Working day ended',d.date)}else{let t=now();current.days.push({date:t.slice(0,10),started:t,ended:null});addEvent('Working day started','New working day')}save();renderEditor()}
 function renderEquipment(){let disabled=current.closed||!activeDay()?'disabled':'';$('equipmentTab').innerHTML=`<div class="card"><h3>Equipment</h3><div class="grid"><input id="eqType" placeholder="Type (PLC, HMI, drive...)"><input id="eqModel" placeholder="Make / model / part no."></div><input id="eqSerial" placeholder="Serial / asset number"><button class="primary" ${disabled} onclick="addEquipment()">Add equipment</button></div><div class="card">${current.equipment.map(e=>`<p><b>${esc(e.type)}</b> — ${esc(e.model)} · ${esc(e.serial)}</p>`).join('')||'No equipment recorded.'}</div>`}
 function addEquipment(){if(!canEdit())return;let type=$('eqType').value.trim(),model=$('eqModel').value.trim(),serial=$('eqSerial').value.trim();if(!type&&!model)return;current.equipment.push({id:uid(),type,model,serial});addEvent('Equipment added',type+' '+model);renderEditor()}
-function renderReport(){let so=current.signoff,readonly=!!current.closed;let report=`<div class="card" id="printReport"><h3>Job report preview</h3><p><b>Customer:</b> ${esc(current.customer)}<br><b>Site:</b> ${esc(current.site)}<br><b>Machine:</b> ${esc(current.machine)}<br><b>Job:</b> ${esc(current.ref||current.id)}<br><b>Type:</b> ${esc(current.type)}<br><b>Status:</b> ${current.closed?'Completed':'In progress'}</p><h4>Reason for attendance</h4><p>${esc(current.reason)||'Not recorded'}</p><h4>Working days</h4>${current.days.map((d,i)=>`<p>Day ${i+1}: ${fmt(d.started)} — ${d.ended?fmt(d.ended):'In progress'}</p>`).join('')}<h4>Work undertaken / findings</h4>${current.notes.map(n=>`<p>${fmt(n.t)} — ${esc(n.text)}</p>`).join('')||'<p>No notes recorded.</p>'}<h4>Measurements</h4>${current.measurements.map(m=>`<p>${esc(m.name)}: ${esc(m.value)} ${esc(m.unit)}</p>`).join('')||'<p>None recorded.</p>'}<h4>Checklist</h4>${current.checks.map(c=>`<p>${esc(c.text)} — <b>${esc(c.status)}</b></p>`).join('')}<h4>Equipment</h4>${current.equipment.map(e=>`<p>${esc(e.type)} — ${esc(e.model)} ${esc(e.serial)}</p>`).join('')||'<p>None recorded.</p>'}<h4>Photographs</h4>${current.photos.map(p=>`<figure style="display:inline-block;margin:8px"><img class="reportphoto" src="${p.data}" alt="${esc(p.name)}"><figcaption class="small">${esc(p.name)}</figcaption></figure>`).join('')||'<p>None recorded.</p>'}<h4>Voice notes</h4><p>${current.voices.length} recording(s) saved.</p><h4>Customer sign-off</h4>${so?`<p><b>Work area:</b> ${esc(so.area)}<br><b>Machine safety:</b> ${esc(so.safe)}<br><b>Machine condition:</b> ${esc(so.condition)}<br><b>Outstanding issues explained:</b> ${esc(so.issues)}<br><b>Comments:</b> ${esc(so.comments)}<br><b>Representative:</b> ${esc(so.name)}<br><b>Company:</b> ${esc(so.company)}<br><b>Signed:</b> ${fmt(so.t)}</p>${so.signature?`<img class="signpreview" src="${so.signature}" alt="Customer signature">`:''}`:'<p>Not signed.</p>'}</div>`;
-$('reportTab').innerHTML=`<div class="actions noprint"><button class="secondary" onclick="window.print()">Print / Save as PDF</button><button class="secondary" onclick="exportBackup()">Export all job data (JSON)</button></div>${report}<div class="card noprint"><h3>Customer sign-off</h3>${readonly?'<p class="notice">Job completed. Reopen it to change the sign-off.</p>':''}<label>Work area<select id="soArea">${opts(['Clean and tidy','Restrictions or comments','Not satisfactory'],so?.area)}</select></label><label>Machine safety<select id="soSafe">${opts(['Safe to operate','Safe with restrictions','Not safe to operate'],so?.safe)}</select></label><label>Machine condition<select id="soCond">${opts(['Operational','Operational with restrictions','Not operational'],so?.condition)}</select></label><label>Outstanding issues explained<select id="soIssues">${opts(['Yes','No','N/A'],so?.issues)}</select></label><label>Customer comments<textarea id="soComments">${esc(so?.comments||'')}</textarea></label><div class="grid"><input id="soName" placeholder="Customer representative name" value="${esc(so?.name||'')}"><input id="soCompany" placeholder="Company" value="${esc(so?.company||'')}"></div><label>Signature</label><canvas id="sig" class="signature"></canvas><div class="actions"><button class="secondary" ${readonly?'disabled':''} onclick="undoSignature()">Undo stroke</button><button class="secondary" ${readonly?'disabled':''} onclick="clearSignature()">Clear signature</button><button class="primary" ${readonly?'disabled':''} onclick="saveSignoff()">Save sign-off</button></div>${so?`<p class="small">Saved ${fmt(so.t)} by ${esc(so.name)}</p>`:''}</div>`;initSignature(so?.signature,readonly)}
+
+let reportMode='technical';
+function reportTools(){
+ const draft=current.reportDrafts?.[reportMode]?.text||'';
+ return `<div class="card noprint">
+ <h3>AI-assisted report writer</h3>
+ <p class="small">Prepare a prompt from your job records, copy it into ChatGPT, then paste the reviewed result here. No API key or AI subscription required by this app.</p>
+ <label>Report type<select id="reportMode" onchange="changeReportMode(this.value)">
+ <option value="technical" ${reportMode==='technical'?'selected':''}>Detailed technical report</option>
+ <option value="customer" ${reportMode==='customer'?'selected':''}>Customer summary report</option>
+ </select></label>
+ <div class="actions"><button class="primary" onclick="preparePrompt()">Prepare AI prompt</button><button class="secondary" onclick="copyPrompt()">Copy prompt</button></div>
+ <label>Prompt to copy<textarea id="aiPrompt" placeholder="Press Prepare AI prompt to collect job information."></textarea></label>
+ <p class="small">Review and remove confidential information before copying. Voice recordings and photo contents are not automatically analysed; attach them separately in ChatGPT if permitted.</p>
+ <label>Paste or edit your completed report<textarea id="draftText" placeholder="Paste the report returned by ChatGPT here, then press Save report draft.">${esc(draft)}</textarea></label>
+ <div class="actions"><button class="primary" onclick="saveDraft()">Save report draft</button><button class="secondary" onclick="loadDraft()">Reload saved draft</button></div>
+ <p class="small">${current.reportDrafts?.[reportMode]?.saved?'Draft last saved: '+fmt(current.reportDrafts[reportMode].saved):'No saved draft for this report type.'} Original notes are retained. Print preview below includes your saved draft, photos and customer signature.</p>
+ </div>`;
+}
+function changeReportMode(mode){reportMode=mode==='customer'?'customer':'technical';renderReport()}
+function buildPrompt(){
+ const j=current,technical=reportMode==='technical';
+ const instructions=technical
+ ?'Write a detailed professional engineering technical report with sections: Reason for attendance, Work undertaken by working day, Investigations and findings, Modifications or corrective actions, Testing and results, Outstanding issues, Recommendations, Handover. Preserve technical details, IP addresses and equipment references only if provided.'
+ :'Write a concise customer-facing engineering site report with sections: Reason for attendance, Summary of work, Findings and outcome, Outstanding issues, Recommendations, Handover. Use clear professional language and avoid unnecessary technical jargon.';
+ const payload={
+  customer:j.customer,site:j.site,jobReference:j.ref,machine:j.machine,jobType:j.type,reason:j.reason,
+  started:j.started,completed:j.closed||null,
+  workingDays:j.days.map((d,i)=>({day:i+1,started:d.started,ended:d.ended||null})),
+  notes:j.notes.map(n=>({time:n.t,text:n.text})),
+  timeline:j.events.map(e=>({time:e.t,type:e.type,description:e.text})),
+  checklist:j.checks.map(c=>({item:c.text,status:c.status,completedAt:c.t||null})),
+  measurements:j.measurements.map(m=>({time:m.t,name:m.name,value:m.value,unit:m.unit})),
+  equipment:j.equipment.map(e=>({type:e.type,model:e.model,serial:e.serial})),
+  photos:j.photos.map(p=>({time:p.t,name:p.name,description:p.caption||null})),
+  files:j.files.map(f=>({time:f.t,name:f.name})),
+  voiceRecordings:j.voices.map(v=>({time:v.t,name:v.name||'Voice recording',transcript:'Not transcribed'})),
+  signoff:j.signoff?{workArea:j.signoff.area,machineSafety:j.signoff.safe,machineCondition:j.signoff.condition,outstandingIssuesExplained:j.signoff.issues,comments:j.signoff.comments,signedAt:j.signoff.t}:null
+ };
+ return `You are drafting a report for an industrial automation and controls engineer.\n${instructions}\n\nRules:\n- Use ONLY the facts in the supplied records. Do not invent actions, test results, diagnoses, recommendations, or sign-off.\n- Distinguish completed, in-progress, not applicable and uncompleted checklist items.\n- Do not claim a fault was fixed unless records show that result.\n- If information is missing, omit it or explicitly say it was not recorded.\n- Do not reproduce personal data unnecessarily.\n- Do not insert a fabricated customer signature; the app will append the saved sign-off.\n- Output plain text with clear section headings, suitable for pasting into a report editor. Do not use markdown tables.\n\nJOB RECORDS:\n${JSON.stringify(payload,null,2)}`;
+}
+function preparePrompt(){$('aiPrompt').value=buildPrompt()}
+async function copyPrompt(){
+ const prompt=$('aiPrompt').value||buildPrompt();$('aiPrompt').value=prompt;
+ try{await navigator.clipboard.writeText(prompt);alert('Prompt copied. Paste into ChatGPT and review the draft before returning.')}
+ catch(e){$('aiPrompt').focus();$('aiPrompt').select();alert('Clipboard unavailable. Select the text and copy it manually.')}
+}
+function saveDraft(){
+ const val=$('draftText').value;
+ if(!current.reportDrafts)current.reportDrafts={};
+ current.reportDrafts[reportMode]={text:val,saved:now()};
+ save();renderReport();
+}
+function loadDraft(){$('draftText').value=current.reportDrafts?.[reportMode]?.text||''}
+function renderReport(){let so=current.signoff,readonly=!!current.closed;let report=`<div class="card" id="printReport"><div class="report-company"><img src="./company-logo.png" alt="PNE Controls Ltd logo"><div><b>PNE CONTROLS LTD</b><br>ENGINEERING SITE REPORT</div></div><h3>Job report preview</h3><p><b>Customer:</b> ${esc(current.customer)}<br><b>Site:</b> ${esc(current.site)}<br><b>Machine:</b> ${esc(current.machine)}<br><b>Job:</b> ${esc(current.ref||current.id)}<br><b>Type:</b> ${esc(current.type)}<br><b>Status:</b> ${current.closed?'Completed':'In progress'}</p><h4>Reason for attendance</h4><p>${esc(current.reason)||'Not recorded'}</p><h4>Working days</h4>${current.days.map((d,i)=>`<p>Day ${i+1}: ${fmt(d.started)} — ${d.ended?fmt(d.ended):'In progress'}</p>`).join('')}${current.reportDrafts?.[reportMode]?.text?.trim()?`<h4>${reportMode==='technical'?'Detailed Technical Report':'Customer Summary Report'}</h4><div class="report-draft">${esc(current.reportDrafts[reportMode].text)}</div><h4>Original site notes (reference)</h4>`:'<h4>Work undertaken / findings</h4>'}${current.notes.map(n=>`<p>${fmt(n.t)} — ${esc(n.text)}</p>`).join('')||'<p>No notes recorded.</p>'}<h4>Measurements</h4>${current.measurements.map(m=>`<p>${esc(m.name)}: ${esc(m.value)} ${esc(m.unit)}</p>`).join('')||'<p>None recorded.</p>'}<h4>Checklist</h4>${current.checks.map(c=>`<p>${esc(c.text)} — <b>${esc(c.status)}</b></p>`).join('')}<h4>Equipment</h4>${current.equipment.map(e=>`<p>${esc(e.type)} — ${esc(e.model)} ${esc(e.serial)}</p>`).join('')||'<p>None recorded.</p>'}<h4>Photographs</h4>${current.photos.map(p=>`<figure style="display:inline-block;margin:8px"><img class="reportphoto" src="${p.data}" alt="${esc(p.name)}"><figcaption class="small">${esc(p.name)}</figcaption></figure>`).join('')||'<p>None recorded.</p>'}<h4>Voice notes</h4><p>${current.voices.length} recording(s) saved.</p><h4>Customer sign-off</h4>${so?`<p><b>Work area:</b> ${esc(so.area)}<br><b>Machine safety:</b> ${esc(so.safe)}<br><b>Machine condition:</b> ${esc(so.condition)}<br><b>Outstanding issues explained:</b> ${esc(so.issues)}<br><b>Comments:</b> ${esc(so.comments)}<br><b>Representative:</b> ${esc(so.name)}<br><b>Company:</b> ${esc(so.company)}<br><b>Signed:</b> ${fmt(so.t)}</p>${so.signature?`<img class="signpreview" src="${so.signature}" alt="Customer signature">`:''}`:'<p>Not signed.</p>'}</div>`;
+$('reportTab').innerHTML=`${reportTools()}<div class="actions noprint"><button class="secondary" onclick="window.print()">Print / Save as PDF</button><button class="secondary" onclick="exportBackup()">Export all job data (JSON)</button></div>${report}<div class="card noprint"><h3>Customer sign-off</h3>${readonly?'<p class="notice">Job completed. Reopen it to change the sign-off.</p>':''}<label>Work area<select id="soArea">${opts(['Clean and tidy','Restrictions or comments','Not satisfactory'],so?.area)}</select></label><label>Machine safety<select id="soSafe">${opts(['Safe to operate','Safe with restrictions','Not safe to operate'],so?.safe)}</select></label><label>Machine condition<select id="soCond">${opts(['Operational','Operational with restrictions','Not operational'],so?.condition)}</select></label><label>Outstanding issues explained<select id="soIssues">${opts(['Yes','No','N/A'],so?.issues)}</select></label><label>Customer comments<textarea id="soComments">${esc(so?.comments||'')}</textarea></label><div class="grid"><input id="soName" placeholder="Customer representative name" value="${esc(so?.name||'')}"><input id="soCompany" placeholder="Company" value="${esc(so?.company||'')}"></div><label>Signature</label><canvas id="sig" class="signature"></canvas><div class="actions"><button class="secondary" ${readonly?'disabled':''} onclick="undoSignature()">Undo stroke</button><button class="secondary" ${readonly?'disabled':''} onclick="clearSignature()">Clear signature</button><button class="primary" ${readonly?'disabled':''} onclick="saveSignoff()">Save sign-off</button></div>${so?`<p class="small">Saved ${fmt(so.t)} by ${esc(so.name)}</p>`:''}</div>`;initSignature(so?.signature,readonly)}
 function opts(list,selected){return list.map(v=>`<option ${v===selected?'selected':''}>${esc(v)}</option>`).join('')}
 let strokes=[],sigCtx=null,sigCanvas=null,baseSignatureImage=null;
 function initSignature(existing,readonly){sigCanvas=$('sig');if(!sigCanvas)return;let width=sigCanvas.clientWidth||320,height=sigCanvas.clientHeight||180,scale=window.devicePixelRatio||1;sigCanvas.width=width*scale;sigCanvas.height=height*scale;sigCtx=sigCanvas.getContext('2d');sigCtx.scale(scale,scale);sigCtx.lineWidth=2;sigCtx.lineCap='round';sigCtx.lineJoin='round';strokes=[];baseSignatureImage=null;signatureDirty=false;if(existing){let img=new Image();img.onload=()=>{baseSignatureImage=img;strokes=[{base:existing}];redraw()};img.src=existing}if(readonly)return;let drawing=false;function pos(e){let r=sigCanvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}}sigCanvas.onpointerdown=e=>{drawing=true;sigCanvas.setPointerCapture(e.pointerId);let p=pos(e);strokes.push([p]);signatureDirty=true;redraw()};sigCanvas.onpointermove=e=>{if(!drawing)return;strokes[strokes.length-1].push(pos(e));redraw()};sigCanvas.onpointerup=()=>drawing=false;sigCanvas.onpointercancel=()=>drawing=false}
