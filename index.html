@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17324d"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png">
+<title>Site Job Reporter V3</title>
+<style>
+:root{--navy:#17324d;--blue:#286aa6;--bg:#f3f5f7;--card:#fff;--muted:#66717c;--border:#d9dee3;--ok:#237a4b}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:#17202a}
+header{position:sticky;top:0;z-index:5;background:var(--navy);color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:18px;margin:0}button{border:0;border-radius:10px;padding:11px 14px;font:inherit;font-weight:650;cursor:pointer}
+.primary{background:var(--blue);color:#fff}.secondary{background:#e9eef2;color:#183047}.danger{background:#f8dddd;color:#8b2222}
+main{max-width:900px;margin:auto;padding:16px 16px 85px}.screen{display:none}.screen.active{display:block}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 1px 2px #0001}
+.row{display:flex;gap:10px;align-items:center}.between{justify-content:space-between}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+label{display:block;font-size:13px;font-weight:700;margin:10px 0 5px}input,textarea,select{width:100%;padding:11px;border:1px solid var(--border);border-radius:9px;font:inherit;background:#fff}textarea{min-height:90px}
+.small{font-size:13px;color:var(--muted)}.title{font-size:22px;font-weight:750;margin:4px 0 12px}.subtitle{font-size:14px;color:var(--muted)}
+.badge{display:inline-block;padding:4px 8px;border-radius:99px;background:#e8f1f8;color:#245b86;font-size:12px;font-weight:700}.status{background:#e8f5ed;color:var(--ok)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.job{cursor:pointer}.job h3{margin:0 0 5px}.job p{margin:3px 0}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0}.tabs button{font-size:12px;padding:9px 5px}
+.timeline{border-left:3px solid #d7e2eb;margin:12px 0 12px 7px;padding-left:15px}.event{margin:0 0 16px;position:relative}.event:before{content:"";width:9px;height:9px;background:var(--blue);border-radius:50%;position:absolute;left:-21px;top:5px}.event strong{display:block}.event time{font-size:11px;color:var(--muted)}
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.photo-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px}
+.check{display:flex;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid #eee}.check input{width:auto}
+.signature{border:1px dashed #8998a5;border-radius:10px;width:100%;height:180px;background:#fff;touch-action:none}
+.empty{padding:25px;text-align:center;color:var(--muted)}
+footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:9px;display:flex;justify-content:center;gap:8px;z-index:4}footer button{flex:1;max-width:180px}
+.hidden{display:none!important}@media(min-width:700px){.grid{grid-template-columns:repeat(3,1fr)}.photo-grid{grid-template-columns:repeat(5,1fr)}}
+button:disabled{opacity:.5;cursor:not-allowed}.checkrow{display:flex;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #eee}.checkrow select{max-width:130px;padding:7px}.checkrow .checkname{flex:1}.signpreview{max-width:100%;height:100px;object-fit:contain;border:1px solid #ddd;background:white}.notice{padding:10px;background:#edf3f9;border-radius:8px}.reportphoto{max-width:220px;max-height:180px;object-fit:contain;margin:5px}.tabs button{font-size:11px} @media print{header,footer,.tabs,.noprint,#activityTab,#captureTab,#equipmentTab,#checklistTab{display:none!important}main{padding:0}#reportTab{display:block!important}.card{box-shadow:none;break-inside:avoid}}
+</style>
+</head>
+<body>
+<header><h1>Site Job Reporter <span style="font-size:12px;color:#bcd0df">V3</span></h1><button class="primary" onclick="newJob()">+ New Job</button></header>
+<main>
+<section id="home" class="screen active">
+<div class="title">Jobs</div>
+<div class="grid"><div class="card"><b id="activeCount">0</b><div class="small">Active jobs</div></div><div class="card"><b id="completeCount">0</b><div class="small">Completed</div></div></div>
+<div class="card"><input id="search" placeholder="Search customer, site, machine or reference..." oninput="renderJobs()"></div>
+<div id="jobList"></div><div class="card"><b>Data &amp; backups</b><p class="small" id="storageStatus">Loading local database…</p><div class="actions"><button class="secondary" onclick="exportBackup()">Export backup</button><button class="secondary" onclick="document.getElementById('restoreFile').click()">Restore backup</button></div><input id="restoreFile" class="hidden" type="file" accept=".json,application/json" onchange="restoreBackup(event)"><p class="small">Data stays on this device until you export it. Phone and laptop do not yet synchronise.</p></div>
+</section>
+
+<section id="newjob" class="screen">
+<div class="title">New Job</div><div class="card">
+<label>Customer<input id="fCustomer"></label><label>Site<input id="fSite"></label>
+<div class="grid"><div><label>Job reference<input id="fRef"></label></div><div><label>Machine / equipment<input id="fMachine"></label></div></div>
+<div class="grid"><div><label>Job type<select id="fType"><option>Breakdown</option><option>Service</option><option>Commissioning</option><option>Installation</option><option>Modification</option><option>Inspection</option><option>Call-out</option><option>Other</option></select></label></div><div><label>Customer contact<input id="fContact"></label></div></div>
+<label>Reason for attendance<textarea id="fReason"></textarea></label>
+<div class="actions"><button class="primary" onclick="createJob()">Start Job</button><button class="secondary" onclick="showHome()">Cancel</button></div>
+</div></section>
+
+<section id="editor" class="screen">
+<div class="row between"><button class="secondary" onclick="showHome()">← Jobs</button><span id="jobStatus"></span></div><div id="jobHeader"></div>
+<div class="tabs" style="grid-template-columns:repeat(5,1fr)"><button onclick="setTab('activity')">Activity</button><button onclick="setTab('capture')">Capture</button><button onclick="setTab('checklist')">Checklist</button><button onclick="setTab('equipment')">Equipment</button><button onclick="setTab('report')">Report</button></div>
+<div id="activityTab"></div><div id="captureTab" class="hidden"></div><div id="checklistTab" class="hidden"></div><div id="equipmentTab" class="hidden"></div><div id="reportTab" class="hidden"></div>
+</section>
+</main>
+<footer><button class="secondary" onclick="showHome()">Home</button><button class="primary" onclick="newJob()">+ New Job</button></footer>
+
+<script>
+const KEY='sjr-v1-data', BACKUP_KEY='sjr-v2-backup', DB_NAME='site-job-reporter-v3', DB_STORE='snapshots';
+let data, current=null, tab='activity', recorder=null, audioStream=null, chunks=[], recording=false, signatureDirty=false;
+try{data=JSON.parse(localStorage.getItem(KEY)||'{"jobs":[]}')}catch(e){data={jobs:[]}};
+if(!Array.isArray(data.jobs))data.jobs=[];
+try{if(!localStorage.getItem(BACKUP_KEY))localStorage.setItem(BACKUP_KEY,JSON.stringify(data))}catch(e){}
+const $=id=>document.getElementById(id),now=()=>new Date().toISOString(),uid=()=>('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,9)),fmt=x=>x?new Date(x).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}):'—',esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+let database=null, writeQueue=Promise.resolve(), storageWarningShown=false;
+function openDatabase(){
+ return new Promise((resolve,reject)=>{
+  if(!window.indexedDB){reject(new Error('IndexedDB unavailable'));return}
+  const req=indexedDB.open(DB_NAME,1);
+  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(DB_STORE))req.result.createObjectStore(DB_STORE)};
+  req.onsuccess=()=>resolve(req.result);
+  req.onerror=()=>reject(req.error);
+ });
+}
+function dbGet(){
+ return new Promise((resolve,reject)=>{
+  const req=database.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get('all');
+  req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+ });
+}
+function dbPut(snapshot){
+ return new Promise((resolve,reject)=>{
+  const tx=database.transaction(DB_STORE,'readwrite');
+  tx.objectStore(DB_STORE).put(snapshot,'all');
+  tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+ });
+}
+function save(){
+ try{
+  const snapshot=structuredClone(data);
+  if(database){
+   writeQueue=writeQueue.catch(()=>{}).then(()=>dbPut(snapshot)).catch(e=>{
+    console.error('Database save failed',e);
+    if(!storageWarningShown){storageWarningShown=true;alert('Saving failed. Please export a backup immediately. Storage may be full.')}
+   });
+  }else{
+   localStorage.setItem(KEY,JSON.stringify(data));
+  }
+  return true;
+ }catch(e){alert('Unable to save. Export a backup and check available device storage.');return false}
+}
+async function initializeStorage(){
+ try{
+  database=await openDatabase();
+  const existing=await dbGet();
+  if(existing && Array.isArray(existing.jobs)){data=existing}
+  else{await dbPut(structuredClone(data))}
+  $('storageStatus').textContent='Local database: IndexedDB (this device only)';
+ }catch(e){
+  console.error(e);
+  $('storageStatus').textContent='Browser storage fallback (limited capacity). Export backups regularly.';
+ }
+ renderJobs();
+}
+async function restoreBackup(event){
+ const file=event.target.files?.[0];event.target.value='';if(!file)return;
+ try{
+  const incoming=JSON.parse(await file.text());
+  if(!incoming||!Array.isArray(incoming.jobs)||incoming.jobs.some(j=>!j||typeof j!=='object'||typeof j.id!=='string'))throw Error('Not a valid Site Job Reporter backup');
+  if(!confirm('Restore '+incoming.jobs.length+' jobs? This REPLACES all jobs on this device. Export your current backup first.'))return;
+  const old=data;data=incoming;
+  if(database){try{await dbPut(structuredClone(data))}catch(e){data=old;throw e}}
+  else{try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){data=old;throw e}}
+  current=null;showHome();alert('Backup restored successfully.');
+ }catch(e){alert('Restore failed: '+e.message)}
+}
+
+function ensure(j){j.days=j.days||[];j.events=j.events||[];j.notes=j.notes||[];j.photos=j.photos||[];j.files=j.files||[];j.measurements=j.measurements||[];j.equipment=j.equipment||[];j.voices=j.voices||[];j.checks=j.checks||[];if(!j.checks.length && !j.checklistInitialized){j.checks=template(j.type).map(text=>({id:uid(),text,status:'Not started'}));j.checklistInitialized=true}j.checks=j.checks.map((c,i)=>({id:c.id||uid(),text:c.text||['Work area safe','Control panel checked','Guards / safety checked','Machine tested','Outstanding issues explained'][i]||'Checklist item',status:c.status||(c.done?'Completed':'Not started'),t:c.t||null}));}
+const TEMPLATES={Commissioning:['Arrive on site','Sign onto RAMS','Establish PLC communications and record IP addresses','Check / update firmware where required','Load PLC program','Verify network and hardware health','Complete I/O checks','Complete safety checks','Check motor direction and speed where applicable','Complete functional checks (start/stop/sensors)','Check alarms and fault handling','Complete product testing','Fine tuning and adjustments','Operator training','Handover'],Service:['Arrive on site','Sign onto RAMS','Confirm reported issue with customer','Inspect machine and review diagnostics','Investigate root cause','Carry out repairs / adjustments','Test repair','Verify normal operation','Record outstanding issues','Explain findings and recommendations','Handover'],Modification:['Arrive on site and sign onto RAMS','Review requested changes','Back up existing PLC/HMI programs','Implement PLC/HMI changes','Complete wiring / hardware changes','Download and verify programs','Check affected I/O','Functional and safety tests','Alarm and fault tests','Customer demonstration','Update documentation','Handover'],Breakdown:['Arrive and sign onto RAMS','Confirm fault','Establish safe working conditions','Check PLC/HMI/drive diagnostics','Identify cause','Repair / rectify','Restore and test operation','Record outstanding issues and recommendations','Handover']};
+function template(type){return [...(TEMPLATES[type]||['Arrive on site','Sign onto RAMS','Carry out planned work','Test and verify','Record outstanding issues','Handover'])]}
+function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$(id).classList.add('active')}
+function showHome(){if(recording)stopVoice();current=null;show('home');renderJobs()}
+function newJob(){['fCustomer','fSite','fRef','fMachine','fContact','fReason'].forEach(id=>$(id).value='');show('newjob')}
+function createJob(){let t=now(),j={id:uid(),customer:fCustomer.value.trim()||'Unnamed customer',site:fSite.value.trim(),ref:fRef.value.trim(),machine:fMachine.value.trim(),type:fType.value,contact:fContact.value.trim(),reason:fReason.value.trim(),started:t,closed:null,days:[{date:t.slice(0,10),started:t,ended:null}],events:[{id:uid(),t,type:'Job started',text:fType.value}],photos:[],files:[],notes:[],measurements:[],checks:template(fType.value).map(text=>({id:uid(),text,status:'Not started'})),checklistInitialized:true,equipment:[],voices:[],signoff:null};data.jobs.unshift(j);save();openJob(j.id)}
+function openJob(id){current=data.jobs.find(j=>j.id===id);if(!current)return;ensure(current);tab='activity';show('editor');renderEditor()}
+function renderJobs(){let q=($('search').value||'').toLowerCase(),jobs=data.jobs.filter(j=>[j.customer,j.site,j.ref,j.machine,j.type].join(' ').toLowerCase().includes(q));$('activeCount').textContent=data.jobs.filter(j=>!j.closed).length;$('completeCount').textContent=data.jobs.filter(j=>j.closed).length;$('jobList').innerHTML=jobs.length?jobs.map(j=>`<div class="card job" onclick="openJob('${j.id}')"><div class="row between"><h3>${esc(j.customer)}</h3><span class="badge ${j.closed?'':'status'}">${j.closed?'Completed':'Active'}</span></div><p>${esc(j.site)} · ${esc(j.machine)}</p><p class="small">${esc(j.type)} · ${esc(j.ref||j.id)} · ${j.days?.length||0} working day(s)</p></div>`).join(''):'<div class="empty">No jobs found.</div>'}
+function activeDay(){return current.days.findLast?current.days.findLast(d=>!d.ended):[...current.days].reverse().find(d=>!d.ended)}
+function canEdit(){if(current.closed){alert('Job is completed. Reopen it before editing.');return false}if(!activeDay()){alert('Start a working day before adding records.');return false}return true}
+function addEvent(type,text){if(!current)return;current.events.push({id:uid(),t:now(),type,text});save()}
+function renderEditor(){if(!current)return;ensure(current);$('jobStatus').innerHTML=`<span class="badge ${current.closed?'':'status'}">${current.closed?'Completed':'Active'}</span>`;$('jobHeader').innerHTML=`<div class="title">${esc(current.customer)}</div><div class="subtitle">${esc(current.site)} · ${esc(current.machine)} · ${esc(current.type)} · ${esc(current.ref||current.id)}</div><div class="actions noprint">${current.closed?'<button class="secondary" onclick="reopenJob()">Reopen job</button>':`<button class="secondary" onclick="endDay()">${activeDay()?'End Day':'Start Day'}</button><button class="danger" onclick="closeJob()">Complete Job</button>`}<button class="danger" onclick="deleteJob()">Delete Job</button></div>`;['activityTab','captureTab','checklistTab','equipmentTab','reportTab'].forEach(id=>$(id).classList.toggle('hidden',id!==tab+'Tab'));renderActivity();renderCapture();renderChecklist();renderEquipment();renderReport()}
+function setTab(x){tab=x;renderEditor()}
+function renderActivity(){let ev=[...current.events];for(const [arr,type,format] of [[current.notes,'Written note',x=>x.text],[current.measurements,'Measurement',x=>`${x.name}: ${x.value} ${x.unit}`],[current.photos,'Photo',x=>x.name],[current.files,'File',x=>x.name],[current.voices,'Voice note',x=>x.name||'Audio recording']])for(const x of arr)ev.push({t:x.t,type,text:format(x)});let seen=new Set();ev=ev.filter(e=>{let k=['Written note','Measurement','Photo','File','Voice note'].includes(e.type)?e.type+'|'+e.text:e.type+'|'+e.t+'|'+e.text;if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>b.t.localeCompare(a.t));$('activityTab').innerHTML=`<div class="card"><b>Working days (${current.days.length})</b>${current.days.map((d,i)=>`<p class="small">Day ${i+1}: ${fmt(d.started)} — ${d.ended?fmt(d.ended):'In progress'}</p>`).join('')}</div><div class="timeline">${ev.map(e=>`<div class="event"><strong>${esc(e.type)}</strong><div>${esc(e.text)}</div><time>${fmt(e.t)}</time></div>`).join('')||'<div class="empty">No activity yet.</div>'}</div>`}
+function renderCapture(){let disabled=current.closed||!activeDay()?'disabled':'';$('captureTab').innerHTML=`<div class="card"><h3>Written note</h3><textarea id="noteText" placeholder="Observations, investigation, action, test result..."></textarea><button class="primary" ${disabled} onclick="addNote()">Save note</button></div><div class="card"><h3>Voice note</h3><button class="primary" id="voiceBtn" ${disabled} onclick="toggleVoice()">🎙 Start recording</button><p class="small">Microphone access usually requires HTTPS or localhost. Opening a downloaded HTML file may prevent recording.</p>${current.voices.map(v=>`<div><b>${esc(v.name||'Voice note')}</b> <span class="small">${fmt(v.t)}</span>${v.data?`<audio controls src="${v.data}" style="width:100%"></audio>`:'<p class="small">Legacy voice entry (no audio stored)</p>'}</div>`).join('')}</div><div class="card"><h3>Photo</h3><input ${disabled} type="file" accept="image/*" capture="environment" onchange="addPhoto(event)"><div class="photo-grid">${current.photos.map(p=>`<div><img src="${p.data}" alt="${esc(p.name)}"><div class="small">${esc(p.name)}</div></div>`).join('')}</div></div><div class="card"><h3>File / PDF</h3><input ${disabled} type="file" multiple onchange="addFiles(event)"><p class="small">File names are stored in this prototype; file contents are not retained. Keep original documents separately.</p><ul>${current.files.map(f=>`<li>${esc(f.name)}</li>`).join('')}</ul></div><div class="card"><h3>Measurement</h3><div class="grid3"><input id="mName" placeholder="Name"><input id="mValue" placeholder="Value"><input id="mUnit" placeholder="Unit"></div><button class="primary" ${disabled} onclick="addMeasurement()">Add measurement</button></div>`}
+function addNote(){if(!canEdit())return;let text=$('noteText').value.trim();if(!text)return;current.notes.push({id:uid(),t:now(),text});save();renderEditor()}
+function addPhoto(e){if(!canEdit())return;let f=e.target.files[0];if(!f)return;let reader=new FileReader();reader.onload=()=>{current.photos.push({id:uid(),t:now(),data:reader.result,name:f.name});if(!save())current.photos.pop();renderEditor()};reader.readAsDataURL(f)}
+function addFiles(e){if(!canEdit())return;for(const f of e.target.files)current.files.push({id:uid(),t:now(),name:f.name,size:f.size,type:f.type});save();renderEditor()}
+function addMeasurement(){if(!canEdit())return;let name=$('mName').value.trim(),value=$('mValue').value.trim(),unit=$('mUnit').value.trim();if(!name||!value)return;current.measurements.push({id:uid(),t:now(),name,value,unit});save();renderEditor()}
+function renderChecklist(){let disabled=current.closed||!activeDay();$('checklistTab').innerHTML=`<div class="card"><h3>Job checklist</h3><p class="small">Checklist progress carries across working days. Edit items for this job.</p>${current.checks.map(c=>`<div class="checkrow"><div class="checkname">${esc(c.text)}${c.t?`<div class="small">Updated ${fmt(c.t)}</div>`:''}</div><select ${disabled?'disabled':''} onchange="setCheck('${c.id}',this.value)">${['Not started','In progress','Completed','Not applicable'].map(st=>`<option ${c.status===st?'selected':''}>${st}</option>`).join('')}</select><button class="danger" ${disabled?'disabled':''} onclick="removeCheck('${c.id}')">×</button></div>`).join('')}<label>Add item<input id="newCheck" placeholder="e.g. Check G120C motor direction"></label><button class="primary" ${disabled?'disabled':''} onclick="addCheck()">Add checklist item</button></div>`}
+function addCheck(){if(!canEdit())return;let text=$('newCheck').value.trim();if(!text)return;current.checks.push({id:uid(),text,status:'Not started'});addEvent('Checklist item added',text);renderEditor()}
+function setCheck(id,status){if(!canEdit())return;let c=current.checks.find(x=>x.id===id);if(!c||c.status===status)return;c.status=status;c.t=now();addEvent('Checklist updated',c.text+' — '+status);renderEditor()}
+function removeCheck(id){if(!canEdit()||!confirm('Remove this checklist item?'))return;let c=current.checks.find(x=>x.id===id);current.checks=current.checks.filter(x=>x.id!==id);addEvent('Checklist item removed',c?.text||'Item');renderEditor()}
+function endDay(){if(current.closed)return;let d=activeDay();if(d){d.ended=now();addEvent('Working day ended',d.date)}else{let t=now();current.days.push({date:t.slice(0,10),started:t,ended:null});addEvent('Working day started','New working day')}save();renderEditor()}
+function renderEquipment(){let disabled=current.closed||!activeDay()?'disabled':'';$('equipmentTab').innerHTML=`<div class="card"><h3>Equipment</h3><div class="grid"><input id="eqType" placeholder="Type (PLC, HMI, drive...)"><input id="eqModel" placeholder="Make / model / part no."></div><input id="eqSerial" placeholder="Serial / asset number"><button class="primary" ${disabled} onclick="addEquipment()">Add equipment</button></div><div class="card">${current.equipment.map(e=>`<p><b>${esc(e.type)}</b> — ${esc(e.model)} · ${esc(e.serial)}</p>`).join('')||'No equipment recorded.'}</div>`}
+function addEquipment(){if(!canEdit())return;let type=$('eqType').value.trim(),model=$('eqModel').value.trim(),serial=$('eqSerial').value.trim();if(!type&&!model)return;current.equipment.push({id:uid(),type,model,serial});addEvent('Equipment added',type+' '+model);renderEditor()}
+function renderReport(){let so=current.signoff,readonly=!!current.closed;let report=`<div class="card" id="printReport"><h3>Job report preview</h3><p><b>Customer:</b> ${esc(current.customer)}<br><b>Site:</b> ${esc(current.site)}<br><b>Machine:</b> ${esc(current.machine)}<br><b>Job:</b> ${esc(current.ref||current.id)}<br><b>Type:</b> ${esc(current.type)}<br><b>Status:</b> ${current.closed?'Completed':'In progress'}</p><h4>Reason for attendance</h4><p>${esc(current.reason)||'Not recorded'}</p><h4>Working days</h4>${current.days.map((d,i)=>`<p>Day ${i+1}: ${fmt(d.started)} — ${d.ended?fmt(d.ended):'In progress'}</p>`).join('')}<h4>Work undertaken / findings</h4>${current.notes.map(n=>`<p>${fmt(n.t)} — ${esc(n.text)}</p>`).join('')||'<p>No notes recorded.</p>'}<h4>Measurements</h4>${current.measurements.map(m=>`<p>${esc(m.name)}: ${esc(m.value)} ${esc(m.unit)}</p>`).join('')||'<p>None recorded.</p>'}<h4>Checklist</h4>${current.checks.map(c=>`<p>${esc(c.text)} — <b>${esc(c.status)}</b></p>`).join('')}<h4>Equipment</h4>${current.equipment.map(e=>`<p>${esc(e.type)} — ${esc(e.model)} ${esc(e.serial)}</p>`).join('')||'<p>None recorded.</p>'}<h4>Photographs</h4>${current.photos.map(p=>`<figure style="display:inline-block;margin:8px"><img class="reportphoto" src="${p.data}" alt="${esc(p.name)}"><figcaption class="small">${esc(p.name)}</figcaption></figure>`).join('')||'<p>None recorded.</p>'}<h4>Voice notes</h4><p>${current.voices.length} recording(s) saved.</p><h4>Customer sign-off</h4>${so?`<p><b>Work area:</b> ${esc(so.area)}<br><b>Machine safety:</b> ${esc(so.safe)}<br><b>Machine condition:</b> ${esc(so.condition)}<br><b>Outstanding issues explained:</b> ${esc(so.issues)}<br><b>Comments:</b> ${esc(so.comments)}<br><b>Representative:</b> ${esc(so.name)}<br><b>Company:</b> ${esc(so.company)}<br><b>Signed:</b> ${fmt(so.t)}</p>${so.signature?`<img class="signpreview" src="${so.signature}" alt="Customer signature">`:''}`:'<p>Not signed.</p>'}</div>`;
+$('reportTab').innerHTML=`<div class="actions noprint"><button class="secondary" onclick="window.print()">Print / Save as PDF</button><button class="secondary" onclick="exportBackup()">Export all job data (JSON)</button></div>${report}<div class="card noprint"><h3>Customer sign-off</h3>${readonly?'<p class="notice">Job completed. Reopen it to change the sign-off.</p>':''}<label>Work area<select id="soArea">${opts(['Clean and tidy','Restrictions or comments','Not satisfactory'],so?.area)}</select></label><label>Machine safety<select id="soSafe">${opts(['Safe to operate','Safe with restrictions','Not safe to operate'],so?.safe)}</select></label><label>Machine condition<select id="soCond">${opts(['Operational','Operational with restrictions','Not operational'],so?.condition)}</select></label><label>Outstanding issues explained<select id="soIssues">${opts(['Yes','No','N/A'],so?.issues)}</select></label><label>Customer comments<textarea id="soComments">${esc(so?.comments||'')}</textarea></label><div class="grid"><input id="soName" placeholder="Customer representative name" value="${esc(so?.name||'')}"><input id="soCompany" placeholder="Company" value="${esc(so?.company||'')}"></div><label>Signature</label><canvas id="sig" class="signature"></canvas><div class="actions"><button class="secondary" ${readonly?'disabled':''} onclick="undoSignature()">Undo stroke</button><button class="secondary" ${readonly?'disabled':''} onclick="clearSignature()">Clear signature</button><button class="primary" ${readonly?'disabled':''} onclick="saveSignoff()">Save sign-off</button></div>${so?`<p class="small">Saved ${fmt(so.t)} by ${esc(so.name)}</p>`:''}</div>`;initSignature(so?.signature,readonly)}
+function opts(list,selected){return list.map(v=>`<option ${v===selected?'selected':''}>${esc(v)}</option>`).join('')}
+let strokes=[],sigCtx=null,sigCanvas=null,baseSignatureImage=null;
+function initSignature(existing,readonly){sigCanvas=$('sig');if(!sigCanvas)return;let width=sigCanvas.clientWidth||320,height=sigCanvas.clientHeight||180,scale=window.devicePixelRatio||1;sigCanvas.width=width*scale;sigCanvas.height=height*scale;sigCtx=sigCanvas.getContext('2d');sigCtx.scale(scale,scale);sigCtx.lineWidth=2;sigCtx.lineCap='round';sigCtx.lineJoin='round';strokes=[];baseSignatureImage=null;signatureDirty=false;if(existing){let img=new Image();img.onload=()=>{baseSignatureImage=img;strokes=[{base:existing}];redraw()};img.src=existing}if(readonly)return;let drawing=false;function pos(e){let r=sigCanvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}}sigCanvas.onpointerdown=e=>{drawing=true;sigCanvas.setPointerCapture(e.pointerId);let p=pos(e);strokes.push([p]);signatureDirty=true;redraw()};sigCanvas.onpointermove=e=>{if(!drawing)return;strokes[strokes.length-1].push(pos(e));redraw()};sigCanvas.onpointerup=()=>drawing=false;sigCanvas.onpointercancel=()=>drawing=false}
+function redraw(){if(!sigCtx)return;let c=sigCanvas,w=c.clientWidth,h=c.clientHeight;sigCtx.clearRect(0,0,w,h);for(const st of strokes){if(st.base){if(baseSignatureImage)sigCtx.drawImage(baseSignatureImage,0,0,w,h);continue}if(!st.length)continue;sigCtx.beginPath();sigCtx.moveTo(st[0].x,st[0].y);if(st.length===1){sigCtx.lineTo(st[0].x+.1,st[0].y+.1)}for(const p of st.slice(1))sigCtx.lineTo(p.x,p.y);sigCtx.stroke()}}
+function undoSignature(){if(!strokes.length)return;strokes.pop();signatureDirty=true;redraw()}
+function clearSignature(){strokes=[];signatureDirty=true;redraw()}
+function saveSignoff(){if(!canEdit())return;let name=$('soName').value.trim();if(!name){alert('Enter customer representative name.');return}let signature=strokes.length?sigCanvas.toDataURL('image/png'):null;if(!signature){alert('Please obtain a signature.');return}let previous=current.signoff;current.signoff={t:now(),area:$('soArea').value,safe:$('soSafe').value,condition:$('soCond').value,issues:$('soIssues').value,comments:$('soComments').value,name,company:$('soCompany').value,signature};addEvent(previous?'Customer sign-off updated':'Customer sign-off',name+' — '+current.signoff.condition);renderEditor()}
+function closeJob(){if(current.closed)return;if(!current.signoff){alert('Please save the customer sign-off first.');setTab('report');return}if(!confirm('Complete this job? You can reopen it later.'))return;let t=now();if(activeDay())activeDay().ended=t;current.closed=t;addEvent('Job completed','Customer sign-off recorded');save();showHome()}
+function deleteJob(){
+ if(!current)return;
+ const target=current, label=[target.customer,target.ref||target.machine].filter(Boolean).join(' — ');
+ if(!confirm('Delete job: '+label+'?\n\nThis permanently removes its working days, notes, photos, recordings, checklist and signature from this browser.\n\nExport a backup first if you might need it later.'))return;
+ if(!confirm('FINAL CONFIRMATION: Permanently delete this job? This cannot be undone.'))return;
+ const index=data.jobs.findIndex(j=>j.id===target.id);
+ if(index<0)return;
+ const removed=data.jobs.splice(index,1)[0];
+ if(!save()){data.jobs.splice(index,0,removed);return}
+ showHome();
+}
+function reopenJob(){if(!current.closed)return;if(!confirm('Reopen this completed job?'))return;current.closed=null;addEvent('Job reopened','Job reopened for additional work');renderEditor()}
+async function toggleVoice(){if(recording){stopVoice();return}if(!canEdit())return;if(!navigator.mediaDevices?.getUserMedia){alert('Microphone unavailable. Try opening the app from HTTPS or localhost in Chrome / Samsung Internet, and grant microphone permission.');return}try{audioStream=await navigator.mediaDevices.getUserMedia({audio:true});chunks=[];recorder=new MediaRecorder(audioStream);recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};recorder.onstop=()=>{let blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});let reader=new FileReader();reader.onload=()=>{current.voices.push({id:uid(),t:now(),name:'Voice note '+new Date().toLocaleTimeString(),data:reader.result});if(!save())current.voices.pop();renderEditor()};reader.readAsDataURL(blob);audioStream?.getTracks().forEach(t=>t.stop());recording=false};recorder.start();recording=true;$('voiceBtn').textContent='⏹ Stop & save recording'}catch(e){audioStream?.getTracks().forEach(t=>t.stop());alert('Could not start microphone: '+e.message+'\nTry HTTPS/localhost and allow microphone access.')}}
+function stopVoice(){if(recorder?.state==='recording')recorder.stop()}
+function exportBackup(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='site-job-reporter-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+initializeStorage();
+if("serviceWorker" in navigator && location.protocol.startsWith("http"))navigator.serviceWorker.register("./sw.js").catch(e=>console.warn("Offline install unavailable",e));
+</script>
+</body></html>
