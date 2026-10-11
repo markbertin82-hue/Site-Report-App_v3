@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#17324d"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png">
-<title>Site Job Reporter V4.2</title>
+<title>Site Job Reporter V4.3</title>
 <style>
 :root{--navy:#17324d;--blue:#286aa6;--bg:#f3f5f7;--card:#fff;--muted:#66717c;--border:#d9dee3;--ok:#237a4b}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:#17202a}
@@ -62,7 +62,7 @@ main,.card,.screen{min-width:0;max-width:100%}
 @media print{#snagsTab{display:none!important}}
 .editable-entry{padding:12px;margin:8px 0;border:1px solid #ccd4de;border-radius:8px;cursor:pointer;overflow-wrap:anywhere}.zoomable{cursor:zoom-in}
 dialog{border:0;border-radius:14px;max-width:min(94vw,650px);width:100%;max-height:90vh;overflow:auto;padding:18px;box-shadow:0 8px 40px #0005}dialog::backdrop{background:#000a}
-#photoDialog{max-width:95vw;width:95vw;max-height:95vh}.photo-viewer{overflow:auto;max-height:75vh;text-align:center;touch-action:pan-x pan-y}.photo-viewer img{max-width:100%;height:auto;touch-action:pinch-zoom}
+#photoDialog{max-width:95vw;width:95vw;max-height:95vh}.photo-viewer{overflow:auto;max-height:70vh;height:65vh;width:100%;text-align:left;touch-action:pan-x pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#1e2530}.photo-viewer img{display:block;width:100%;max-width:100%;height:auto;touch-action:pan-x pan-y;user-select:none;-webkit-user-drag:none}
 @media print{dialog{display:none!important}}
 </style>
 </head>
@@ -86,11 +86,11 @@ dialog{border:0;border-radius:14px;max-width:min(94vw,650px);width:100%;max-heig
 </div></section>
 
 <section id="editor" class="screen">
-<div class="row between"><button class="secondary" onclick="showHome()">← Jobs</button><span id="jobStatus"></span></div><div id="jobHeader"></div>
+<div class="row between"><div class="actions noprint" style="margin:0;gap:6px"><button class="secondary" onclick="showHome()">← Jobs</button><button class="secondary" onclick="editJobDetails()">Edit job details</button></div><span id="jobStatus"></span></div><div id="jobHeader"></div>
 <div class="tabs" style="grid-template-columns:repeat(6,minmax(0,1fr))"><button onclick="setTab('activity')">Activity</button><button onclick="setTab('capture')">Capture</button><button onclick="setTab('checklist')">Checklist</button><button onclick="setTab('snags')">Snags <span id="snagCount"></span></button><button onclick="setTab('equipment')">Equipment</button><button onclick="setTab('report')">Report</button></div>
 <div id="activityTab"></div><div id="captureTab" class="hidden"></div><div id="checklistTab" class="hidden"></div><div id="snagsTab" class="hidden"></div><div id="equipmentTab" class="hidden"></div><div id="reportTab" class="hidden"></div>
 </section>
-</main><dialog id="editDialog"><h3 id="modalTitle"></h3><div id="modalFields"></div><div class="actions"><button class="primary" onclick="commitModal()">Save changes</button><button class="secondary" onclick="closeModal()">Cancel</button></div></dialog><dialog id="photoDialog"><button class="secondary" onclick="photoDialog.close()">Close ✕</button><div class="actions"><button class="secondary" onclick="zoomPhoto(1.3)">Zoom +</button><button class="secondary" onclick="zoomPhoto(1/1.3)">Zoom −</button><button class="secondary" onclick="resetPhotoZoom()">Fit</button></div><div class="photo-viewer"><img id="largePhoto" alt="Enlarged photo"></div><p class="small">Pinch to zoom on mobile; use browser zoom on desktop.</p></dialog>
+</main><dialog id="editDialog"><h3 id="modalTitle"></h3><div id="modalFields"></div><div class="actions"><button class="primary" onclick="commitModal()">Save changes</button><button class="secondary" onclick="closeModal()">Cancel</button></div></dialog><dialog id="photoDialog"><button class="secondary" onclick="photoDialog.close()">Close ✕</button><div class="actions"><button class="secondary" onclick="zoomPhoto(1.3)">Zoom +</button><button class="secondary" onclick="zoomPhoto(1/1.3)">Zoom −</button><button class="secondary" onclick="resetPhotoZoom()">Fit</button></div><div class="photo-viewer"><img id="largePhoto" alt="Enlarged photo"></div><p class="small">Use Zoom + / Zoom −, then drag or swipe to move around the enlarged image.</p></dialog>
 <footer><button class="secondary" onclick="showHome()">Home</button><button class="primary" onclick="newJob()">+ New Job</button></footer>
 
 <script>
@@ -163,7 +163,7 @@ async function restoreBackup(event){
  }catch(e){alert('Restore failed: '+e.message)}
 }
 
-function ensure(j){j.days=j.days||[];j.events=j.events||[];j.notes=j.notes||[];j.photos=j.photos||[];j.files=j.files||[];j.measurements=j.measurements||[];j.equipment=j.equipment||[];j.voices=j.voices||[];j.address=j.address||"";j.engineer=j.engineer||"";j.snags=j.snags||[];j.checks=j.checks||[];if(!j.checks.length && !j.checklistInitialized){j.checks=template(j.type).map(text=>({id:uid(),text,status:'Not started'}));j.checklistInitialized=true}if(!j.checks.some(c=>/signed off permit/i.test(c.text||'')))j.checks.push({id:uid(),text:'Signed off permit',status:'Not started'});j.checks=j.checks.map((c,i)=>({id:c.id||uid(),text:c.text||['Work area safe','Control panel checked','Guards / safety checked','Machine tested','Outstanding issues explained'][i]||'Checklist item',status:c.status||(c.done?'Completed':'Not started'),t:c.t||null}));}
+function ensure(j){j.days=j.days||[];j.events=j.events||[];j.notes=j.notes||[];j.notes.forEach(n=>{if(!n.id)n.id=uid()});j.photos=j.photos||[];j.files=j.files||[];j.measurements=j.measurements||[];j.equipment=j.equipment||[];j.equipment.forEach(e=>{if(!e.id)e.id=uid()});j.voices=j.voices||[];j.address=j.address||"";j.engineer=j.engineer||"";j.snags=j.snags||[];j.checks=j.checks||[];if(!j.checks.length && !j.checklistInitialized){j.checks=template(j.type).map(text=>({id:uid(),text,status:'Not started'}));j.checklistInitialized=true}if(!j.checks.some(c=>/signed off permit/i.test(c.text||'')))j.checks.push({id:uid(),text:'Signed off permit',status:'Not started'});j.checks=j.checks.map((c,i)=>({id:c.id||uid(),text:c.text||['Work area safe','Control panel checked','Guards / safety checked','Machine tested','Outstanding issues explained'][i]||'Checklist item',status:c.status||(c.done?'Completed':'Not started'),t:c.t||null}));}
 const TEMPLATES={Commissioning:['Arrive on site','Sign onto RAMS','Establish PLC communications and record IP addresses','Check / update firmware where required','Load PLC program','Verify network and hardware health','Complete I/O checks','Complete safety checks','Check motor direction and speed where applicable','Complete functional checks (start/stop/sensors)','Check alarms and fault handling','Complete product testing','Fine tuning and adjustments','Operator training','Handover'],Service:['Arrive on site','Sign onto RAMS','Confirm reported issue with customer','Inspect machine and review diagnostics','Investigate root cause','Carry out repairs / adjustments','Test repair','Verify normal operation','Record outstanding issues','Explain findings and recommendations','Handover'],Modification:['Arrive on site and sign onto RAMS','Review requested changes','Back up existing PLC/HMI programs','Implement PLC/HMI changes','Complete wiring / hardware changes','Download and verify programs','Check affected I/O','Functional and safety tests','Alarm and fault tests','Customer demonstration','Update documentation','Handover'],Breakdown:['Arrive and sign onto RAMS','Confirm fault','Establish safe working conditions','Check PLC/HMI/drive diagnostics','Identify cause','Repair / rectify','Restore and test operation','Record outstanding issues and recommendations','Handover']};
 function template(type){return [...(TEMPLATES[type]||['Arrive on site','Sign onto RAMS','Carry out planned work','Test and verify','Record outstanding issues','Handover']),'Signed off permit']}
 function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$(id).classList.add('active')}
@@ -181,7 +181,6 @@ function openModal(title,fields,onSave){
 function commitModal(){if(!modalSave)return;const fn=modalSave;modalSave=null;fn();closeModal();renderEditor()}
 function closeModal(){$('editDialog').close();modalSave=null}
 function editJobDetails(){
- if(current.closed){alert('Reopen the job before editing its details.');return}
  const keys=[['customer','Customer'],['site','Site'],['address','Site address'],['ref','Job number / reference'],['machine','Machine / equipment'],['contact','Site contact'],['engineer','Attending engineer'],['reason','Reason for attendance']];
  openModal('Edit job details',keys.map(([key,label])=>({key,label,value:current[key]||'',multi:key==='reason'||key==='address'})),values=>{
  if(!values.customer){alert('Customer cannot be blank.');return}
@@ -189,16 +188,27 @@ function editJobDetails(){
  });
 }
 function editNote(id){
- if(!canEdit())return;const n=current.notes.find(n=>n.id===id);if(!n)return;
+ const n=current.notes.find(n=>n.id===id);if(!n)return;
  openModal('Edit site note',[{key:'text',label:'Note',value:n.text,multi:true}],v=>{if(!v.text)return;n.text=v.text;n.edited=now();save()});
 }
 function editEquipment(id){
- if(!canEdit())return;const e=current.equipment.find(e=>e.id===id);if(!e)return;
+ const e=current.equipment.find(e=>e.id===id);if(!e)return;
  openModal('Edit equipment',[{key:'type',label:'Equipment type',value:e.type},{key:'model',label:'Make / model',value:e.model},{key:'serial',label:'Serial / asset number',value:e.serial}],v=>{Object.assign(e,v);save()});
 }
 let photoScale=1;
-function zoomPhoto(factor){photoScale=Math.max(1,Math.min(6,photoScale*factor));$('largePhoto').style.width=(photoScale*100)+'%';$('largePhoto').style.maxWidth='none'}
-function resetPhotoZoom(){photoScale=1;$('largePhoto').style.width='100%';$('largePhoto').style.maxWidth='100%'}
+function zoomPhoto(factor){
+ const view=document.querySelector('.photo-viewer'),img=$('largePhoto');
+ const oldWidth=img.getBoundingClientRect().width||view.clientWidth;
+ const cx=(view.scrollLeft+view.clientWidth/2)/oldWidth;
+ const cy=(view.scrollTop+view.clientHeight/2)/(img.getBoundingClientRect().height||1);
+ photoScale=Math.max(1,Math.min(8,photoScale*factor));
+ img.style.width=(photoScale*100)+'%';img.style.maxWidth='none';
+ requestAnimationFrame(()=>{view.scrollLeft=Math.max(0,cx*img.getBoundingClientRect().width-view.clientWidth/2);view.scrollTop=Math.max(0,cy*img.getBoundingClientRect().height-view.clientHeight/2)});
+}
+function resetPhotoZoom(){
+ photoScale=1;const img=$('largePhoto'),view=document.querySelector('.photo-viewer');
+ img.style.width='100%';img.style.maxWidth='100%';view.scrollLeft=0;view.scrollTop=0;
+}
 function openPhoto(id){const p=current.photos.find(p=>p.id===id);if(!p)return;resetPhotoZoom();$('largePhoto').src=p.data;$('photoDialog').showModal()}
 function openSnagPhoto(sid,pid){const x=current.snags.find(x=>x.id===sid),p=x?.photos?.find(p=>p.id===pid);if(!p)return;resetPhotoZoom();$('largePhoto').src=p.data;$('photoDialog').showModal()}
 function newJob(){['fCustomer','fSite','fAddress','fRef','fMachine','fContact','fReason'].forEach(id=>$(id).value='');show('newjob')}
@@ -208,7 +218,7 @@ function renderJobs(){let q=($('search').value||'').trim().toLocaleLowerCase(),j
 function activeDay(){return current.days.findLast?current.days.findLast(d=>!d.ended):[...current.days].reverse().find(d=>!d.ended)}
 function canEdit(){if(current.closed){alert('Job is completed. Reopen it before editing.');return false}if(!activeDay()){alert('Start a working day before adding records.');return false}return true}
 function addEvent(type,text){if(!current)return;current.events.push({id:uid(),t:now(),type,text});save()}
-function renderEditor(){if(!current)return;ensure(current);$('jobStatus').innerHTML=`<span class="badge ${current.closed?'':'status'}">${current.closed?'Completed':'Active'}</span>`;$('jobHeader').innerHTML=`<div class="title">${esc(current.customer)}</div><div class="subtitle">${esc(current.site)} · ${esc(current.machine)} · ${esc(current.type)} · ${esc(current.ref||current.id)}</div><div class="actions noprint"><button class="secondary" onclick="editJobDetails()">Edit job details</button>${current.closed?'<button class="secondary" onclick="reopenJob()">Reopen job</button>':`<button class="secondary" onclick="endDay()">${activeDay()?'End Day':'Start Day'}</button><button class="danger" onclick="closeJob()">Complete Job</button>`}<button class="danger" onclick="deleteJob()">Delete Job</button></div>`;['activityTab','captureTab','checklistTab','snagsTab','equipmentTab','reportTab'].forEach(id=>$(id).classList.toggle('hidden',id!==tab+'Tab'));renderActivity();renderCapture();renderChecklist();renderSnags();renderEquipment();renderReport()}
+function renderEditor(){if(!current)return;ensure(current);$('jobStatus').innerHTML=`<span class="badge ${current.closed?'':'status'}">${current.closed?'Completed':'Active'}</span>`;$('jobHeader').innerHTML=`<div class="title">${esc(current.customer)}</div><div class="subtitle">${esc(current.site)} · ${esc(current.machine)} · ${esc(current.type)} · ${esc(current.ref||current.id)}</div><div class="actions noprint">${current.closed?'<button class="secondary" onclick="reopenJob()">Reopen job</button>':`<button class="secondary" onclick="endDay()">${activeDay()?'End Day':'Start Day'}</button><button class="danger" onclick="closeJob()">Complete Job</button>`}<button class="danger" onclick="deleteJob()">Delete Job</button></div>`;['activityTab','captureTab','checklistTab','snagsTab','equipmentTab','reportTab'].forEach(id=>$(id).classList.toggle('hidden',id!==tab+'Tab'));renderActivity();renderCapture();renderChecklist();renderSnags();renderEquipment();renderReport()}
 function setTab(x){tab=x;renderEditor()}
 function renderActivity(){let ev=[...current.events];for(const [arr,type,format] of [[current.notes,'Written note',x=>x.text],[current.measurements,'Measurement',x=>`${x.name}: ${x.value} ${x.unit}`],[current.photos,'Photo',x=>x.name],[current.files,'File',x=>x.name],[current.voices,'Voice note',x=>x.name||'Audio recording']])for(const x of arr)ev.push({t:x.t,type,text:format(x)});let seen=new Set();ev=ev.filter(e=>{let k=['Written note','Measurement','Photo','File','Voice note'].includes(e.type)?e.type+'|'+e.text:e.type+'|'+e.t+'|'+e.text;if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>b.t.localeCompare(a.t));$('activityTab').innerHTML=`<div class="card"><b>Working days (${current.days.length})</b>${current.days.map((d,i)=>`<p class="small">Day ${i+1}: ${fmt(d.started)} — ${d.ended?fmt(d.ended):'In progress'}</p>`).join('')}</div><div class="timeline">${ev.map(e=>`<div class="event"><strong>${esc(e.type)}</strong><div>${esc(e.text)}</div><time>${fmt(e.t)}</time></div>`).join('')||'<div class="empty">No activity yet.</div>'}</div>`}
 function renderCapture(){let disabled=current.closed||!activeDay()?'disabled':'';$('captureTab').innerHTML=`<div class="card"><h3>Written note</h3><textarea id="noteText" placeholder="Observations, investigation, action, test result..."></textarea><button class="primary" ${disabled} onclick="addNote()">Save note</button><h4>Saved notes (tap to edit)</h4>${current.notes.map(n=>`<div class="editable-entry" onclick="editNote('${n.id}')"><b>${fmt(n.t)}</b><div>${esc(n.text)}</div></div>`).join('')||'<p class="small">No notes yet.</p>'}</div><div class="card"><h3>Voice note</h3><button class="primary" id="voiceBtn" ${disabled} onclick="toggleVoice()">🎙 Start recording</button><p class="small">Microphone access usually requires HTTPS or localhost. Opening a downloaded HTML file may prevent recording.</p>${current.voices.map(v=>`<div><b>${esc(v.name||'Voice note')}</b> <span class="small">${fmt(v.t)}</span>${v.data?`<audio controls src="${v.data}" style="width:100%"></audio>`:'<p class="small">Legacy voice entry (no audio stored)</p>'}</div>`).join('')}</div><div class="card"><h3>Photos & screenshots</h3><label>Take photo<input ${disabled} type="file" accept="image/*" capture="environment" onchange="addPhoto(event)"></label><label>Upload photo / screenshot<input ${disabled} type="file" accept="image/*" multiple onchange="addPhotos(event)"></label><div class="photo-grid">${current.photos.map(p=>`<div><img class="zoomable" onclick="openPhoto('${p.id}')" src="${p.data}" alt="${esc(p.name)}"><div class="small">${esc(p.name)}</div></div>`).join('')}</div></div><div class="card"><h3>File / PDF</h3><input ${disabled} type="file" multiple onchange="addFiles(event)"><p class="small">File names are stored in this prototype; file contents are not retained. Keep original documents separately.</p><ul>${current.files.map(f=>`<li>${esc(f.name)}</li>`).join('')}</ul></div><div class="card"><h3>Measurement</h3><div class="grid3"><input id="mName" placeholder="Name"><input id="mValue" placeholder="Value"><input id="mUnit" placeholder="Unit"></div><button class="primary" ${disabled} onclick="addMeasurement()">Add measurement</button></div>`}
