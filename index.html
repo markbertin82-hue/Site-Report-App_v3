@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#17324d"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png">
-<title>Site Job Reporter V4.4</title>
+<title>Site Job Reporter V4.5</title>
 <style>
 :root{--navy:#17324d;--blue:#286aa6;--bg:#f3f5f7;--card:#fff;--muted:#66717c;--border:#d9dee3;--ok:#237a4b}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:#17202a}
@@ -339,9 +339,43 @@ function renderEquipment(){let disabled=current.closed||!activeDay()?'disabled':
 function addEquipment(){if(!canEdit())return;let type=$('eqType').value.trim(),model=$('eqModel').value.trim(),serial=$('eqSerial').value.trim();if(!type&&!model)return;current.equipment.push({id:uid(),type,model,serial});addEvent('Equipment added',type+' '+model);renderEditor()}
 
 let reportMode='technical';
+let reportFormat='clean';
+function setReportFormat(v){reportFormat=['clean','daily','chronological'].includes(v)?v:'clean';renderReport()}
+function reportDate(t){if(!t)return 'Not recorded';const d=new Date(t);return Number.isNaN(d.getTime())?'Not recorded':d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
+function reportTimestamp(t){return reportFormat==='chronological'?fmt(t):reportDate(t)}
+function reportWork(){
+ const notes=current.notes||[];
+ if(!notes.length)return '<p>No notes recorded.</p>';
+ if(reportFormat==='clean')return notes.map(n=>`<p>${esc(n.text)}</p>`).join('');
+ if(reportFormat==='chronological')return notes.map(n=>`<p>${fmt(n.t)} — ${esc(n.text)}</p>`).join('');
+ const groups=new Map();
+ for(const n of notes){
+   const day=(current.days||[]).find(d=>n.t>=d.started&&n.t<=(d.ended||new Date().toISOString()));
+   const key=day?reportDate(day.started):reportDate(n.t);
+   if(!groups.has(key))groups.set(key,[]);
+   groups.get(key).push(n);
+ }
+ return [...groups].map(([date,entries])=>`<h5>${esc(date)}</h5>${entries.map(n=>`<p>${esc(n.text)}</p>`).join('')}`).join('');
+}
+function reportWorkingDays(){
+ if(reportFormat==='clean'){
+  const first=current.days[0]?.started||current.started;
+  const last=current.closed||current.days[current.days.length-1]?.ended;
+  return `<h4>Job dates</h4><p><b>Started:</b> ${reportDate(first)}${last?`<br><b>Finished:</b> ${reportDate(last)}`:''}</p>`;
+ }
+ return `<h4>Working days</h4>${current.days.map((d,i)=>`<p>Day ${i+1}: ${reportTimestamp(d.started)}${reportFormat==='chronological'?` — ${d.ended?fmt(d.ended):'In progress'}`:''}</p>`).join('')}`;
+}
+
 function reportTools(){
  const draft=current.reportDrafts?.[reportMode]?.text||'';
  return `<div class="card noprint">
+ <h3>Report format</h3>
+ <label>Choose report layout<select id="reportFormat" onchange="setReportFormat(this.value)">
+ <option value="clean" ${reportFormat==='clean'?'selected':''}>Clean Technical Report (no entry times)</option>
+ <option value="daily" ${reportFormat==='daily'?'selected':''}>Daily Summary (grouped by date)</option>
+ <option value="chronological" ${reportFormat==='chronological'?'selected':''}>Chronological (full timestamps)</option>
+ </select></label>
+ <p class="small">This changes only the report presentation. Original entry timestamps remain saved.</p>
  <h3>AI-assisted report writer</h3>
  <p class="small">Prepare a prompt from your job records, copy it into ChatGPT, then paste the reviewed result here. No API key or AI subscription required by this app.</p>
  <label>Report type<select id="reportMode" onchange="changeReportMode(this.value)">
@@ -363,6 +397,7 @@ function buildPrompt(){
  ?'Write a detailed professional engineering technical report with sections: Reason for attendance, Work undertaken by working day, Investigations and findings, Modifications or corrective actions, Testing and results, Outstanding issues, Recommendations, Handover. Preserve technical details, IP addresses and equipment references only if provided.'
  :'Write a concise customer-facing engineering site report with sections: Reason for attendance, Summary of work, Findings and outcome, Outstanding issues, Recommendations, Handover. Use clear professional language and avoid unnecessary technical jargon.';
  const payload={
+  reportFormat:reportFormat,
   customer:j.customer,site:j.site,siteAddress:j.address,engineer:j.engineer,siteContact:j.contact,jobReference:j.ref,machine:j.machine,jobType:j.type,reason:j.reason,
   started:j.started,completed:j.closed||null,
   workingDays:j.days.map((d,i)=>({day:i+1,started:d.started,ended:d.ended||null})),
@@ -377,7 +412,12 @@ function buildPrompt(){
   voiceRecordings:j.voices.map(v=>({time:v.t,name:v.name||'Voice recording',transcript:v.transcript||'Not transcribed'})),
   signoff:j.signoff?{workArea:j.signoff.area,machineSafety:j.signoff.safe,machineCondition:j.signoff.condition,outstandingIssuesExplained:j.signoff.issues,comments:j.signoff.comments,signedAt:j.signoff.t}:null
  };
- return `You are drafting a report for an industrial automation and controls engineer.\n${instructions}\n\nRules:\n- Use ONLY the facts in the supplied records. Do not invent actions, test results, diagnoses, recommendations, or sign-off.\n- Distinguish completed, in-progress, not applicable and uncompleted checklist items.\n- Do not claim a fault was fixed unless records show that result.\n- If information is missing, omit it or explicitly say it was not recorded.\n- Do not reproduce personal data unnecessarily.\n- Do not insert a fabricated customer signature; the app will append the saved sign-off.\n- Output plain text with clear section headings, suitable for pasting into a report editor. Do not use markdown tables.\n\nJOB RECORDS:\n${JSON.stringify(payload,null,2)}`;
+ const timingInstruction=reportFormat==='clean'
+ ?'Write a clean technical report without individual entry timestamps. Include only job start/completion dates when relevant. Do not infer that record entry time is the time work happened.'
+ :reportFormat==='daily'
+ ?'Group work by working date. Show dates but never individual entry times. Do not infer that record entry time is the time work happened.'
+ :'Retain original entry timestamps where appropriate and clearly distinguish recorded-at times from actual work times.';
+ return `You are drafting a report for an industrial automation and controls engineer.\n${instructions}\n${timingInstruction}\n\nRules:\n- Use ONLY the facts in the supplied records. Do not invent actions, test results, diagnoses, recommendations, or sign-off.\n- Distinguish completed, in-progress, not applicable and uncompleted checklist items.\n- Do not claim a fault was fixed unless records show that result.\n- If information is missing, omit it or explicitly say it was not recorded.\n- Do not reproduce personal data unnecessarily.\n- Do not insert a fabricated customer signature; the app will append the saved sign-off.\n- Output plain text with clear section headings, suitable for pasting into a report editor. Do not use markdown tables.\n\nJOB RECORDS:\n${JSON.stringify(payload,null,2)}`;
 }
 function preparePrompt(){$('aiPrompt').value=buildPrompt()}
 async function copyPrompt(){
@@ -392,7 +432,7 @@ function saveDraft(){
  save();renderReport();
 }
 function loadDraft(){$('draftText').value=current.reportDrafts?.[reportMode]?.text||''}
-function renderReport(){let so=current.signoff,readonly=!!current.closed;let report=`<div class="card" id="printReport"><div class="report-company"><img src="./company-logo.png" alt="PNE Controls Ltd logo"><div><b>PNE CONTROLS LTD</b><br>ENGINEERING SITE REPORT</div></div><h3>Job report preview</h3><p><b>Customer:</b> ${esc(current.customer)}<br><b>Site:</b> ${esc(current.site)}<br><b>Site address:</b> ${esc(current.address||"Not recorded")}<br><b>Engineer:</b> ${esc(current.engineer||"Not recorded")}<br><b>Machine:</b> ${esc(current.machine)}<br><b>Job:</b> ${esc(current.ref||current.id)}<br><b>Type:</b> ${esc(current.type)}<br><b>Status:</b> ${current.closed?'Completed':'In progress'}</p><h4>Reason for attendance</h4><p>${esc(current.reason)||'Not recorded'}</p><h4>Working days</h4>${current.days.map((d,i)=>`<p>Day ${i+1}: ${fmt(d.started)} — ${d.ended?fmt(d.ended):'In progress'}</p>`).join('')}${current.reportDrafts?.[reportMode]?.text?.trim()?`<h4>${reportMode==='technical'?'Detailed Technical Report':'Customer Summary Report'}</h4><div class="report-draft">${esc(current.reportDrafts[reportMode].text)}</div><h4>Original site notes (reference)</h4>`:'<h4>Work undertaken / findings</h4>'}${current.notes.map(n=>`<p>${fmt(n.t)} — ${esc(n.text)}</p>`).join('')||'<p>No notes recorded.</p>'}<h4>Measurements</h4>${current.measurements.map(m=>`<p>${esc(m.name)}: ${esc(m.value)} ${esc(m.unit)}</p>`).join('')||'<p>None recorded.</p>'}<h4>Checklist</h4>${current.checks.map(c=>`<p>${esc(c.text)} — <b>${esc(c.status)}</b></p>`).join('')}<h4>Commissioning snags / outstanding items</h4>${(current.snags||[]).map(x=>`<div style="break-inside:avoid;margin:10px 0"><b>Snag #${esc(x.number)} — ${esc(x.description)}</b><br>Location: ${esc(x.equipment)} · Priority: ${esc(x.priority)} · Status: <b>${esc(x.status)}</b><br>Identified: ${fmt(x.created)}${x.resolved?` · Resolved: ${fmt(x.resolved)}`:''}${x.updates.map(u=>`<p>${fmt(u.t)} — ${esc(u.text)}</p>`).join('')}${(x.photos||[]).map(p=>`<img class="reportphoto" src="${p.data}" alt="Snag photo">`).join('')}</div>`).join('')||'<p>No snags recorded.</p>'}<h4>Equipment</h4>${current.equipment.map(e=>`<p>${esc(e.type)} — ${esc(e.model)} ${esc(e.serial)}</p>`).join('')||'<p>None recorded.</p>'}<h4>Photographs</h4>${current.photos.map(p=>`<figure style="display:inline-block;margin:8px"><img class="reportphoto" src="${p.data}" alt="${esc(p.name)}"><figcaption class="small">${esc(p.name)}</figcaption></figure>`).join('')||'<p>None recorded.</p>'}<h4>Voice notes</h4><p>${current.voices.length} recording(s) saved.</p>${current.voices.filter(v=>v.transcript?.trim()).map(v=>`<p><b>${esc(v.name||'Voice note')} (${fmt(v.t)}):</b><br>${esc(v.transcript)}</p>`).join('')}<h4>Customer sign-off</h4>${so?`<p><b>Work area:</b> ${esc(so.area)}<br><b>Machine safety:</b> ${esc(so.safe)}<br><b>Machine condition:</b> ${esc(so.condition)}<br><b>Outstanding issues explained:</b> ${esc(so.issues)}<br><b>Comments:</b> ${esc(so.comments)}<br><b>Representative:</b> ${esc(so.name)}<br><b>Company:</b> ${esc(so.company)}<br><b>Signed:</b> ${fmt(so.t)}</p>${so.signature?`<img class="signpreview" src="${so.signature}" alt="Customer signature">`:''}`:'<p>Not signed.</p>'}</div>`;
+function renderReport(){let so=current.signoff,readonly=!!current.closed;let report=`<div class="card" id="printReport"><div class="report-company"><img src="./company-logo.png" alt="PNE Controls Ltd logo"><div><b>PNE CONTROLS LTD</b><br>ENGINEERING SITE REPORT</div></div><h3>Job report preview</h3><p><b>Customer:</b> ${esc(current.customer)}<br><b>Site:</b> ${esc(current.site)}<br><b>Site address:</b> ${esc(current.address||"Not recorded")}<br><b>Engineer:</b> ${esc(current.engineer||"Not recorded")}<br><b>Machine:</b> ${esc(current.machine)}<br><b>Job:</b> ${esc(current.ref||current.id)}<br><b>Type:</b> ${esc(current.type)}<br><b>Status:</b> ${current.closed?'Completed':'In progress'}</p><h4>Reason for attendance</h4><p>${esc(current.reason)||'Not recorded'}</p>${reportWorkingDays()}${current.reportDrafts?.[reportMode]?.text?.trim()?`<h4>${reportMode==='technical'?'Detailed Technical Report':'Customer Summary Report'}</h4><div class="report-draft">${esc(current.reportDrafts[reportMode].text)}</div><h4>Original site notes (reference)</h4>`:'<h4>Work undertaken / findings</h4>'}${reportWork()}<h4>Measurements</h4>${current.measurements.map(m=>`<p>${esc(m.name)}: ${esc(m.value)} ${esc(m.unit)}</p>`).join('')||'<p>None recorded.</p>'}<h4>Checklist</h4>${current.checks.map(c=>`<p>${esc(c.text)} — <b>${esc(c.status)}</b></p>`).join('')}<h4>Commissioning snags / outstanding items</h4>${(current.snags||[]).map(x=>`<div style="break-inside:avoid;margin:10px 0"><b>Snag #${esc(x.number)} — ${esc(x.description)}</b><br>Location: ${esc(x.equipment)} · Priority: ${esc(x.priority)} · Status: <b>${esc(x.status)}</b><br>Identified: ${reportTimestamp(x.created)}${x.resolved?` · Resolved: ${reportTimestamp(x.resolved)}`:''}${x.updates.map(u=>`<p>${reportFormat==='chronological'?fmt(u.t)+' — ':reportFormat==='daily'?reportDate(u.t)+' — ':''}${esc(u.text)}</p>`).join('')}${(x.photos||[]).map(p=>`<img class="reportphoto" src="${p.data}" alt="Snag photo">`).join('')}</div>`).join('')||'<p>No snags recorded.</p>'}<h4>Equipment</h4>${current.equipment.map(e=>`<p>${esc(e.type)} — ${esc(e.model)} ${esc(e.serial)}</p>`).join('')||'<p>None recorded.</p>'}<h4>Photographs</h4>${current.photos.map(p=>`<figure style="display:inline-block;margin:8px"><img class="reportphoto" src="${p.data}" alt="${esc(p.name)}"><figcaption class="small">${esc(p.name)}</figcaption></figure>`).join('')||'<p>None recorded.</p>'}<h4>Voice notes</h4><p>${current.voices.length} recording(s) saved.</p>${current.voices.filter(v=>v.transcript?.trim()).map(v=>`<p><b>${esc(v.name||'Voice note')} (${reportFormat==='clean'?'Recorded':reportTimestamp(v.t)}):</b><br>${esc(v.transcript)}</p>`).join('')}<h4>Customer sign-off</h4>${so?`<p><b>Work area:</b> ${esc(so.area)}<br><b>Machine safety:</b> ${esc(so.safe)}<br><b>Machine condition:</b> ${esc(so.condition)}<br><b>Outstanding issues explained:</b> ${esc(so.issues)}<br><b>Comments:</b> ${esc(so.comments)}<br><b>Representative:</b> ${esc(so.name)}<br><b>Company:</b> ${esc(so.company)}<br><b>Signed:</b> ${reportTimestamp(so.t)}</p>${so.signature?`<img class="signpreview" src="${so.signature}" alt="Customer signature">`:''}`:'<p>Not signed.</p>'}</div>`;
 $('reportTab').innerHTML=`${reportTools()}<div class="actions noprint"><button class="secondary" onclick="window.print()">Print / Save as PDF</button><button class="secondary" onclick="exportBackup()">Export all job data (JSON)</button></div>${report}<div class="card noprint"><h3>Customer sign-off</h3>${readonly?'<p class="notice">Job completed. Reopen it to change the sign-off.</p>':''}<label>Work area<select id="soArea">${opts(['Clean and tidy','Restrictions or comments','Not satisfactory'],so?.area)}</select></label><label>Machine safety<select id="soSafe">${opts(['Safe to operate','Safe with restrictions','Not safe to operate'],so?.safe)}</select></label><label>Machine condition<select id="soCond">${opts(['Operational','Operational with restrictions','Not operational'],so?.condition)}</select></label><label>Outstanding issues explained<select id="soIssues">${opts(['Yes','No','N/A'],so?.issues)}</select></label><label>Customer comments<textarea id="soComments">${esc(so?.comments||'')}</textarea></label><div class="grid"><input id="soName" placeholder="Customer representative name" value="${esc(so?.name||'')}"><input id="soCompany" placeholder="Company" value="${esc(so?.company||'')}"></div><label>Signature</label><canvas id="sig" class="signature"></canvas><div class="actions"><button class="secondary" ${readonly?'disabled':''} onclick="undoSignature()">Undo stroke</button><button class="secondary" ${readonly?'disabled':''} onclick="clearSignature()">Clear signature</button><button class="primary" ${readonly?'disabled':''} onclick="saveSignoff()">Save sign-off</button></div>${so?`<p class="small">Saved ${fmt(so.t)} by ${esc(so.name)}</p>`:''}</div>`;initSignature(so?.signature,readonly)}
 function opts(list,selected){return list.map(v=>`<option ${v===selected?'selected':''}>${esc(v)}</option>`).join('')}
 let strokes=[],sigCtx=null,sigCanvas=null,baseSignatureImage=null;

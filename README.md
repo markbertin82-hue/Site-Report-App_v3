@@ -1,12 +1,12 @@
-# Site Job Reporter V4.4
+Site Job Reporter V4.5
 
-New features:
-- Snags tab: export Outstanding Snags Only or Full Snag Register via browser Print / Save as PDF. Optional snag photos, job details, PNE logo, timestamps, and investigation histories.
-- Capture tab: Download each saved voice recording, paste/edit/save its transcription at any time, including after job completion.
-- Saved transcripts included in the AI report prompt and the regular job report preview.
+Three report formats in Report tab:
+- Clean Technical Report (default): no entry times; shows job start/end dates.
+- Daily Summary: notes grouped by date, no entry times.
+- Chronological: original timestamps.
 
-How to transcribe: Download audio from Capture > Voice note, transcribe with a suitable service or locally, review technical terms and paste into the transcript box, then Save transcript. ChatGPT audio upload/transcription availability depends on the current plan/client/file type. Avoid uploading confidential job recordings without employer approval.
+AI prompt instructions reflect selected format. Original stored timestamps are unchanged.
+Snag list export remains available.
 
-How to export snags: Open a job > Snags > choose Outstanding only or Full register > optional photos > Print / Save snag list as PDF. In the browser's print dialog choose Save as PDF.
-
-Update: Export a JSON backup before replacing all seven root files on the existing GitHub Pages repository. Wait for deployment and reopen online. Do not clear browser website data. Jobs and recordings remain device-local; no automatic cloud sync.
+Back up jobs first; replace seven existing files in GitHub Pages. Keep same URL. Reopen online to update. Do not clear website data.
+Note: dates in Daily Summary are based on when entries were recorded. For retrospective data entry, choose Clean Technical Report.
